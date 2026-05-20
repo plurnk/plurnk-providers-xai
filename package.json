@@ -1,0 +1,39 @@
+{
+    "name": "@plurnk/plurnk-providers-xai",
+    "version": "0.1.0",
+    "description": "xAI provider for plurnk-service. Routes xai/{model} aliases through xAI's OpenAI-compatible chat-completions endpoint; pulls real per-token pricing from /v1/language-models at fromEnv time.",
+    "type": "module",
+    "license": "MIT",
+    "publishConfig": {
+        "access": "public"
+    },
+    "engines": {
+        "node": ">=25"
+    },
+    "plurnk": {
+        "kind": "provider",
+        "name": "xai"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist/**/*",
+        "README.md"
+    ],
+    "scripts": {
+        "test:lint": "tsc --noEmit",
+        "test:unit": "node --test src/**/*.test.ts",
+        "build:dist": "tsc -p tsconfig.build.json",
+        "build": "npm run build:dist",
+        "prepare": "npm run build"
+    },
+    "devDependencies": {
+        "@types/node": "^25.8.0",
+        "typescript": "^6.0.3"
+    }
+}
