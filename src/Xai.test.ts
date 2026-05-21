@@ -143,13 +143,21 @@ test("costFor: cached=0 collapses to prompt+completion", () => {
     assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 0, total: 1100 }), 15_000_000);
 });
 
-test("countTokens: heuristic returns 0 for empty, ceil(len/4) otherwise", () => {
+test("countTokens: real cl100k_base via gpt-tokenizer", () => {
     const p = new Xai({
         baseUrl: "https://api.x.ai/v1",
         apiKey: "sk", model: "grok-4.3", contextSize: 1, fetchTimeoutMs: 1, reasonBudget: 0,
         pricing: samplePricing,
     });
     assert.equal(p.countTokens(""), 0);
-    assert.equal(p.countTokens("abcd"), 1);
-    assert.equal(p.countTokens("abcde"), 2);
+    // "hello world" is a known cl100k_base 2-token sequence ("hello"|" world").
+    assert.equal(p.countTokens("hello world"), 2);
+    // Single short word should be one token.
+    assert.equal(p.countTokens("Paris"), 1);
+    // Real tokenizer beats heuristic: a long English sentence tokenizes to
+    // fewer tokens than chars/4 would suggest.
+    const sentence = "The quick brown fox jumps over the lazy dog.";
+    const heuristic = Math.ceil(sentence.length / 4);
+    const real = p.countTokens(sentence);
+    assert.ok(real > 0 && real < heuristic, `cl100k tokenized "${sentence}" to ${real}; heuristic was ${heuristic}`);
 });

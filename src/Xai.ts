@@ -1,3 +1,4 @@
+import { encode as encodeCl100k } from "gpt-tokenizer/encoding/cl100k_base";
 import { chatCompletionStream, OpenAiHttpError } from "./openaiStream.ts";
 
 const DEFAULT_BASE_URL = "https://api.x.ai/v1";
@@ -127,10 +128,11 @@ export default class Xai {
     get baseUrl(): string { return this.#baseUrl; }
     get pricing(): XaiPricing { return this.#pricing; }
 
-    // Heuristic. xAI uses cl100k_base (tiktoken's OpenAI family) for Grok;
-    // pass-2 swaps in the real tokenizer.
+    // Real cl100k_base tokenization via gpt-tokenizer. Per xAI's docs Grok
+    // uses cl100k_base (the OpenAI GPT-3.5/4 family encoding). No per-model
+    // dispatch needed — all current Grok variants share the same tokenizer.
     countTokens(text: string): number {
-        return text.length === 0 ? 0 : Math.ceil(text.length / 4);
+        return text.length === 0 ? 0 : encodeCl100k(text).length;
     }
 
     // Three-rate cost: cached tokens are a SUBSET of prompt_tokens, billed

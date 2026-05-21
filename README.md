@@ -74,7 +74,7 @@ Some Grok models reject the param entirely (the non-reasoning variants); request
 
 ## tokenization
 
-Heuristic 4-chars-per-token today. xAI uses `cl100k_base` (the OpenAI tiktoken family) for Grok; pass-2 work swaps in a real `cl100k_base` tokenizer for accurate counts.
+Real `cl100k_base` via [`gpt-tokenizer`](https://www.npmjs.com/package/gpt-tokenizer) (sync, pure JS). xAI's docs document Grok as using cl100k_base; this sibling encodes `countTokens(text)` accordingly. No per-model dispatch — all current Grok variants share the same encoding.
 
 ## license
 
