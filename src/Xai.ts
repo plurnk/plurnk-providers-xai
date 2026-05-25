@@ -2,13 +2,12 @@ import { encode as encodeCl100k } from "gpt-tokenizer/encoding/cl100k_base";
 import { chatCompletionStream, OpenAiHttpError } from "./openaiStream.ts";
 
 const DEFAULT_BASE_URL = "https://api.x.ai/v1";
-const DEFAULT_FETCH_TIMEOUT_MS = 600000;
 
 // Context windows from docs.x.ai/developers/models (May 2026). xAI does not
 // expose context_window via any documented API endpoint — /v1/language-models
 // returns rich pricing data but no window, /v1/models is OpenAI-sparse.
-// Operators can override via XAI_CONTEXT_SIZE for new aliases not yet in
-// the table. Longest prefix match wins.
+// Operators can override via PLURNK_PROVIDER_CONTEXT_SIZE for new aliases not
+// yet in the table. Longest prefix match wins.
 const CONTEXT_BY_PREFIX: ReadonlyArray<[string, number]> = Object.freeze([
     ["grok-4.20-multi-agent", 2_000_000],
     ["grok-4.1-fast", 2_000_000],
@@ -98,27 +97,24 @@ export default class Xai {
         const baseUrl = env.XAI_BASE_URL !== undefined && env.XAI_BASE_URL.length > 0
             ? env.XAI_BASE_URL
             : DEFAULT_BASE_URL;
-        const fetchTimeoutMs = env.PLURNK_PROVIDER_FETCH_TIMEOUT !== undefined && env.PLURNK_PROVIDER_FETCH_TIMEOUT.length > 0
-            ? Number(env.PLURNK_PROVIDER_FETCH_TIMEOUT)
-            : DEFAULT_FETCH_TIMEOUT_MS;
+        const fetchTimeoutMs = parseRequiredInt(env.PLURNK_FETCH_TIMEOUT, "PLURNK_FETCH_TIMEOUT");
+        const reasonBudget = parseRequiredInt(env.PLURNK_REASON, "PLURNK_REASON");
         const normalizedBase = baseUrl.replace(/\/$/, "");
         const pricing = await fetchPricing({ baseUrl: normalizedBase, apiKey, model, fetchTimeoutMs });
 
         // Context: env override > per-family table > throw.
-        const envCtx = env.XAI_CONTEXT_SIZE;
-        const contextSize = envCtx !== undefined && envCtx.length > 0
-            ? Number(envCtx)
-            : lookupContextByPrefix(model);
+        const envCtx = parseOptionalInt(env.PLURNK_PROVIDER_CONTEXT_SIZE, "PLURNK_PROVIDER_CONTEXT_SIZE");
+        const contextSize = envCtx !== null ? envCtx : lookupContextByPrefix(model);
         if (contextSize === null || !Number.isFinite(contextSize) || contextSize <= 0) {
             throw new Error(
                 `xai provider: no context-window known for "${model}". xAI's API does not expose this; ` +
                 "either pick an alias matching a known family prefix (grok-4.3, grok-4.20*, etc.) " +
-                "or set XAI_CONTEXT_SIZE explicitly.",
+                "or set PLURNK_PROVIDER_CONTEXT_SIZE explicitly.",
             );
         }
         return new Xai({
             baseUrl, apiKey, model, contextSize, fetchTimeoutMs,
-            reasonBudget: Number(env.PLURNK_REASON ?? "0"),
+            reasonBudget,
             pricing,
         });
     }
@@ -193,6 +189,26 @@ const reasoningEffortFromBudget = (budget: number): "low" | "medium" | "high" | 
     if (budget <= 1000) return "low";
     if (budget <= 4000) return "medium";
     return "high";
+};
+
+const parseRequiredInt = (raw: string | undefined, name: string): number => {
+    if (raw === undefined || raw.length === 0) {
+        throw new Error(`xai provider: ${name} must be set`);
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+        throw new Error(`xai provider: ${name} must be a number (got "${raw}")`);
+    }
+    return n;
+};
+
+const parseOptionalInt = (raw: string | undefined, name: string): number | null => {
+    if (raw === undefined || raw.length === 0) return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+        throw new Error(`xai provider: ${name} must be a number (got "${raw}")`);
+    }
+    return n;
 };
 
 // /v1/language-models/{id} returns per-model pricing in pico-dollars/token.

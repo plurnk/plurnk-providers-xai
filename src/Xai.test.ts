@@ -4,10 +4,65 @@ import Xai from "./Xai.ts";
 
 const samplePricing = { prompt_pico_per_token: 12500, cached_pico_per_token: 2000, completion_pico_per_token: 25000 };
 
+// Minimum env that satisfies all required guards in fromEnv. Tests that need
+// to exercise one specific knob override its key on top of this.
+const baseEnv = Object.freeze({
+    XAI_API_KEY: "sk-test",
+    PLURNK_FETCH_TIMEOUT: "600000",
+    PLURNK_REASON: "0",
+});
+
 test("fromEnv: throws when XAI_API_KEY is unset", async () => {
     await assert.rejects(
         () => Xai.fromEnv({}, "grok-4.3"),
         /XAI_API_KEY must be set/,
+    );
+});
+
+test("fromEnv: throws when PLURNK_FETCH_TIMEOUT is unset", async () => {
+    await assert.rejects(
+        () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_REASON: "0" }, "grok-4.3"),
+        /PLURNK_FETCH_TIMEOUT must be set/,
+    );
+});
+
+test("fromEnv: throws when PLURNK_FETCH_TIMEOUT is non-numeric", async () => {
+    await assert.rejects(
+        () => Xai.fromEnv({ ...baseEnv, PLURNK_FETCH_TIMEOUT: "abc" }, "grok-4.3"),
+        /PLURNK_FETCH_TIMEOUT must be a number/,
+    );
+});
+
+test("fromEnv: throws when PLURNK_REASON is unset", async () => {
+    await assert.rejects(
+        () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_FETCH_TIMEOUT: "600000" }, "grok-4.3"),
+        /PLURNK_REASON must be set/,
+    );
+});
+
+test("fromEnv: throws when PLURNK_REASON is non-numeric", async () => {
+    await assert.rejects(
+        () => Xai.fromEnv({ ...baseEnv, PLURNK_REASON: "lots" }, "grok-4.3"),
+        /PLURNK_REASON must be a number/,
+    );
+});
+
+test("fromEnv: throws when PLURNK_PROVIDER_CONTEXT_SIZE is non-numeric", async (t) => {
+    const originalFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = originalFetch; });
+    globalThis.fetch = (async () => ({
+        ok: true,
+        json: async () => ({
+            id: "grok-4.3",
+            prompt_text_token_price: 12500,
+            cached_prompt_text_token_price: 2000,
+            completion_text_token_price: 25000,
+        }),
+    })) as unknown as typeof fetch;
+
+    await assert.rejects(
+        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDER_CONTEXT_SIZE: "huge" }, "grok-4.3"),
+        /PLURNK_PROVIDER_CONTEXT_SIZE must be a number/,
     );
 });
 
@@ -24,7 +79,7 @@ test("fromEnv: resolves pricing via /v1/language-models/{id} and context from pr
         }),
     })) as unknown as typeof fetch;
 
-    const p = await Xai.fromEnv({ XAI_API_KEY: "sk-test" }, "grok-4.3");
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
     assert.equal(p.model, "grok-4.3");
     assert.equal(p.contextSize, 1_000_000);  // from per-family prefix table
     assert.deepEqual(p.pricing, samplePricing);
@@ -44,11 +99,11 @@ test("fromEnv: longest-prefix-wins on context lookup", async (t) => {
     })) as unknown as typeof fetch;
 
     // "grok-4.20-multi-agent" prefix (2M) wins over "grok-4.20" prefix (1M).
-    const p = await Xai.fromEnv({ XAI_API_KEY: "sk-test" }, "grok-4.20-multi-agent-0309");
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.20-multi-agent-0309");
     assert.equal(p.contextSize, 2_000_000);
 });
 
-test("fromEnv: XAI_CONTEXT_SIZE env overrides the per-family table", async (t) => {
+test("fromEnv: PLURNK_PROVIDER_CONTEXT_SIZE env overrides the per-family table", async (t) => {
     const originalFetch = globalThis.fetch;
     t.after(() => { globalThis.fetch = originalFetch; });
     globalThis.fetch = (async () => ({
@@ -61,11 +116,11 @@ test("fromEnv: XAI_CONTEXT_SIZE env overrides the per-family table", async (t) =
         }),
     })) as unknown as typeof fetch;
 
-    const p = await Xai.fromEnv({ XAI_API_KEY: "sk-test", XAI_CONTEXT_SIZE: "131072" }, "grok-4.3");
+    const p = await Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDER_CONTEXT_SIZE: "131072" }, "grok-4.3");
     assert.equal(p.contextSize, 131072);  // env override beats the 1M default
 });
 
-test("fromEnv: throws when alias matches no prefix AND XAI_CONTEXT_SIZE unset", async (t) => {
+test("fromEnv: throws when alias matches no prefix AND PLURNK_PROVIDER_CONTEXT_SIZE unset", async (t) => {
     const originalFetch = globalThis.fetch;
     t.after(() => { globalThis.fetch = originalFetch; });
     globalThis.fetch = (async () => ({
@@ -79,7 +134,7 @@ test("fromEnv: throws when alias matches no prefix AND XAI_CONTEXT_SIZE unset", 
     })) as unknown as typeof fetch;
 
     await assert.rejects(
-        () => Xai.fromEnv({ XAI_API_KEY: "sk-test" }, "grok-7-unknown"),
+        () => Xai.fromEnv({ ...baseEnv }, "grok-7-unknown"),
         /no context-window known for "grok-7-unknown"/,
     );
 });
@@ -99,7 +154,7 @@ test("fromEnv: falls back to list endpoint on 404 from per-id endpoint", async (
         };
     }) as unknown as typeof fetch;
 
-    const p = await Xai.fromEnv({ XAI_API_KEY: "sk-test" }, "grok-4.3-latest");
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3-latest");
     assert.equal(callCount, 2, "should have fallen back to list endpoint");
     assert.deepEqual(p.pricing, samplePricing);
     assert.equal(p.contextSize, 1_000_000);  // matches "grok-4.3" prefix

@@ -27,13 +27,15 @@ const result = await provider.generate({
 
 ## env
 
+No fallback defaults — required vars throw at `fromEnv` if missing or unparseable. Defaults belong in `plurnk-service`'s `.env.example` cascade, not in library code.
+
 | Variable | Required | Notes |
 |---|---|---|
 | `XAI_API_KEY` | yes | Bearer token from console.x.ai |
 | `XAI_BASE_URL` | no | Override the API root. Default `https://api.x.ai/v1` |
-| `XAI_CONTEXT_SIZE` | no | Override context window when the per-family default doesn't apply (rare; new model not yet in the table) |
-| `PLURNK_REASON` | no | Universal reasoning budget (PROVIDERS.md §3.8); see translation table below |
-| `PLURNK_PROVIDER_FETCH_TIMEOUT` | no | Universal fetch timeout in ms; default `600000` (10m) |
+| `PLURNK_PROVIDER_CONTEXT_SIZE` | no | Override context window when the per-family default doesn't apply (rare; new model not yet in the table) |
+| `PLURNK_REASON` | yes | Universal reasoning budget (PROVIDERS.md §3.8); `0` disables, `> 0` picks an effort tier (see translation table below) |
+| `PLURNK_FETCH_TIMEOUT` | yes | Universal fetch timeout in ms (PROVIDERS.md §3.9) |
 
 ## pricing
 
@@ -57,7 +59,7 @@ xAI does **not** expose context window via any documented API endpoint. The sibl
 | `grok-4.3` | 1,000,000 |
 | `grok-code-fast` | 256,000 |
 
-For aliases not matching any prefix, set `XAI_CONTEXT_SIZE` explicitly. The table updates with xAI's docs page; PRs welcome.
+For aliases not matching any prefix, set `PLURNK_PROVIDER_CONTEXT_SIZE` explicitly. The table updates with xAI's docs page; PRs welcome.
 
 ## reasoning
 
@@ -65,7 +67,7 @@ xAI's reasoning is a tiered `reasoning_effort` body param (`low | medium | high`
 
 | PLURNK_REASON | reasoning_effort |
 |---|---|
-| `0` (default) | omit (no reasoning) |
+| `0` | omit (no reasoning) |
 | `1`–`1000` | `low` |
 | `1001`–`4000` | `medium` |
 | `4001`+ | `high` |
