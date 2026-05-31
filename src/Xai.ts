@@ -5,13 +5,13 @@
 // usage mapping, reasoning translation) is the framework's.
 
 import {
+    computeCost,
     OpenAICompatProvider,
     parseOptionalInt,
     parseRequiredInt,
     requireEnv,
     tokenizerFor,
     type Provider,
-    type ProviderUsage,
 } from "@plurnk/plurnk-providers";
 
 const DEFAULT_BASE_URL = "https://api.x.ai/v1";
@@ -76,15 +76,13 @@ export default class Xai {
             countTokens: tokenizerFor("cl100k"),
             // Three-rate cost: cached tokens are a SUBSET of prompt_tokens,
             // billed at the discounted cached rate; the non-cached portion is
-            // billed at the full prompt rate.
-            costFor: (usage: ProviderUsage) => {
-                const nonCachedPrompt = Math.max(0, usage.prompt - usage.cached);
-                return Math.round(
-                    nonCachedPrompt * pricing.prompt_pico_per_token
-                    + usage.cached * pricing.cached_pico_per_token
-                    + usage.completion * pricing.completion_pico_per_token,
-                );
-            },
+            // billed at the full prompt rate. computeCost bills billable output
+            // (completion + reasoning) at the completion rate.
+            costFor: (usage) => computeCost(usage, {
+                input: pricing.prompt_pico_per_token,
+                output: pricing.completion_pico_per_token,
+                cached: pricing.cached_pico_per_token,
+            }),
         });
     }
 }

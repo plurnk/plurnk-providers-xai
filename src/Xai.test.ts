@@ -112,14 +112,26 @@ test("costFor: three-rate math with cached subset of prompt", async () => {
     // 1000 prompt (200 cached) + 100 completion
     // = (800 × 12500) + (200 × 2000) + (100 × 25000)
     // = 10_000_000 + 400_000 + 2_500_000 = 12_900_000 pico
-    assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 200, total: 1100 }), 12_900_000);
+    assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 200, reasoning: 0, total: 1100 }), 12_900_000);
 });
 
 test("costFor: cached=0 collapses to prompt+completion", async () => {
     mockPricing(pricingEntry);
     const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
     // 1000 × 12500 + 100 × 25000 = 12_500_000 + 2_500_000 = 15_000_000
-    assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 0, total: 1100 }), 15_000_000);
+    assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 0, reasoning: 0, total: 1100 }), 15_000_000);
+});
+
+test("costFor: reasoning billed at completion rate while distinct cached rate still applies", async () => {
+    mockPricing(pricingEntry);
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
+    // 1000 prompt (200 cached) + 100 completion + 50 reasoning
+    // = (800 × 12500) + (200 × 2000) + ((100 + 50) × 25000)
+    // = 10_000_000 + 400_000 + 3_750_000 = 14_150_000 pico
+    assert.equal(
+        p.costFor({ prompt: 1000, completion: 100, cached: 200, reasoning: 50, total: 1150 }),
+        14_150_000,
+    );
 });
 
 test("countTokens: cl100k tokenizer (hello world = 2)", async () => {
