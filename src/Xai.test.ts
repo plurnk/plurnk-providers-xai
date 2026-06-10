@@ -45,15 +45,30 @@ test("fromEnv: throws when PLURNK_FETCH_TIMEOUT is unset", async () => {
 test("fromEnv: throws when PLURNK_REASON is non-numeric", async () => {
     await assert.rejects(
         () => Xai.fromEnv({ ...baseEnv, PLURNK_REASON: "lots" }, "grok-4.3"),
-        /PLURNK_REASON must be a number/,
+        /PLURNK_REASON must be a non-negative integer/,
     );
 });
 
 test("fromEnv: throws when PLURNK_PROVIDER_CONTEXT_SIZE is non-numeric", async () => {
     await assert.rejects(
         () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDER_CONTEXT_SIZE: "huge" }, "grok-4.3"),
-        /PLURNK_PROVIDER_CONTEXT_SIZE must be a number/,
+        /PLURNK_PROVIDER_CONTEXT_SIZE must be a non-negative integer/,
     );
+});
+
+test("generate failure carries the provider:xai telemetry source (SPEC §12)", async () => {
+    const { ProviderError } = await import("@plurnk/plurnk-providers");
+    mock.method(globalThis, "fetch", async (url: string) => {
+        if (String(url).includes("/language-models")) return new Response(JSON.stringify(pricingEntry), { status: 200 });
+        return new Response("rate limited", { status: 429 });
+    });
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
+    await assert.rejects(() => p.generate({ messages: [] }), (err: unknown) => {
+        assert.ok(err instanceof ProviderError);
+        assert.equal(err.kind, "rate_limit");
+        assert.equal(err.toTelemetryEvent().source, "provider:xai");
+        return true;
+    });
 });
 
 // — context resolution —

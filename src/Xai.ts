@@ -9,6 +9,7 @@ import {
     OpenAICompatProvider,
     parseOptionalInt,
     parseRequiredInt,
+    providerSource,
     requireEnv,
     tokenizerFor,
     type Provider,
@@ -83,6 +84,7 @@ export default class Xai {
                 output: pricing.completion_pico_per_token,
                 cached: pricing.cached_pico_per_token,
             }),
+            source: providerSource("xai"),
         });
     }
 }
