@@ -1,6 +1,6 @@
 {
     "name": "@plurnk/plurnk-providers-xai",
-    "version": "0.2.8",
+    "version": "0.3.0",
     "description": "xAI provider for plurnk-service. Routes xai/{model} aliases through xAI's OpenAI-compatible chat-completions endpoint; pulls real per-token pricing from /v1/language-models at fromEnv time.",
     "type": "module",
     "license": "MIT",
@@ -36,7 +36,7 @@
         "@types/node": "^25.9.1",
         "typescript": "^6.0.3"
     },
-    "dependencies": {
-        "@plurnk/plurnk-providers": "0.1.10"
+    "peerDependencies": {
+        "@plurnk/plurnk-providers": "0.2.x"
     }
 }
