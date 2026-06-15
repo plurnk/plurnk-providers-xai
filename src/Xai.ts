@@ -9,7 +9,7 @@ import {
     OpenAICompatProvider,
     parseOptionalInt,
     parseRequiredInt,
-    reasoningKnobsFromEnv,
+    reasoningBudgetFromEnv,
     providerSource,
     requireEnv,
     tokenizerFor,
@@ -45,7 +45,7 @@ export default class Xai {
     static async fromEnv(env: NodeJS.ProcessEnv, model: string): Promise<Provider> {
         const apiKey = requireEnv(env.XAI_API_KEY, "XAI_API_KEY", "xai");
         const fetchTimeoutMs = parseRequiredInt(env.PLURNK_FETCH_TIMEOUT, "PLURNK_FETCH_TIMEOUT", "xai");
-        const reasonBudget = parseRequiredInt(env.PLURNK_PROVIDERS_REASON_LEVEL, "PLURNK_PROVIDERS_REASON_LEVEL", "xai");
+        const reasoningBudget = reasoningBudgetFromEnv(env, "xai");
         const rawBase = env.XAI_BASE_URL !== undefined && env.XAI_BASE_URL.length > 0
             ? env.XAI_BASE_URL
             : DEFAULT_BASE_URL;
@@ -71,7 +71,7 @@ export default class Xai {
             fetchTimeoutMs,
             headers: { Authorization: `Bearer ${apiKey}` },
             contextSize,
-            reasonBudget,
+            reasoningBudget,
             reasoningStyle: "effort",
             // Per xAI's docs Grok uses cl100k_base. All current Grok variants
             // share the same tokenizer — no per-model dispatch needed.
@@ -86,7 +86,6 @@ export default class Xai {
                 cached: pricing.cached_pico_per_token,
             }),
             source: providerSource("xai"),
-            ...reasoningKnobsFromEnv(env, "xai"),
         });
     }
 }
