@@ -10,7 +10,6 @@ import {
     parseOptionalInt,
     parseRequiredInt,
     reasoningBudgetFromEnv,
-    planFromEnv,
     providerSource,
     requireEnv,
     tokenizerFor,
@@ -87,7 +86,6 @@ export default class Xai {
                 cached: pricing.cached_pico_per_token,
             }),
             source: providerSource("xai"),
-            plan: planFromEnv(env, "xai"),
         });
     }
 }

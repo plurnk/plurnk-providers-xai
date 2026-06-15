@@ -7,7 +7,7 @@ import Xai from "./Xai.ts";
 const baseEnv = Object.freeze({
     XAI_API_KEY: "sk-test",
     PLURNK_FETCH_TIMEOUT: "600000",
-    PLURNK_PROVIDERS_REASONING_BUDGET: "0", PLURNK_PLAN: "0",
+    PLURNK_PROVIDERS_REASONING_BUDGET: "0",
 });
 
 // Mock the /language-models pricing probe. `entry` becomes the per-id response.
@@ -37,7 +37,7 @@ test("fromEnv: throws when XAI_API_KEY is unset", async () => {
 
 test("fromEnv: throws when PLURNK_FETCH_TIMEOUT is unset", async () => {
     await assert.rejects(
-        () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_PROVIDERS_REASONING_BUDGET: "0", PLURNK_PLAN: "0" }, "grok-4.3"),
+        () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_PROVIDERS_REASONING_BUDGET: "0" }, "grok-4.3"),
         /PLURNK_FETCH_TIMEOUT must be set/,
     );
 });
