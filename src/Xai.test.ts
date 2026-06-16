@@ -8,6 +8,7 @@ const baseEnv = Object.freeze({
     XAI_API_KEY: "sk-test",
     PLURNK_FETCH_TIMEOUT: "600000",
     PLURNK_PROVIDERS_REASONING_BUDGET: "0",
+    PLURNK_PROVIDER_RETRY_ATTEMPTS: "0",
 });
 
 // Mock the /language-models pricing probe. `entry` becomes the per-id response.

@@ -72,6 +72,7 @@ export default class Xai {
             headers: { Authorization: `Bearer ${apiKey}` },
             contextSize,
             reasoningBudget,
+            retryAttempts: parseRequiredInt(env.PLURNK_PROVIDER_RETRY_ATTEMPTS, "PLURNK_PROVIDER_RETRY_ATTEMPTS", "xai"),
             reasoningStyle: "effort",
             // Per xAI's docs Grok uses cl100k_base. All current Grok variants
             // share the same tokenizer — no per-model dispatch needed.
