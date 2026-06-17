@@ -34,8 +34,9 @@ No fallback defaults — required vars throw at `fromEnv` if missing or unparsea
 | `XAI_API_KEY` | yes | Bearer token from console.x.ai |
 | `XAI_BASE_URL` | no | Override the API root. Default `https://api.x.ai/v1` |
 | `PLURNK_PROVIDER_CONTEXT_SIZE` | no | Override context window when the per-family default doesn't apply (rare; new model not yet in the table) |
-| `PLURNK_REASON` | yes | Universal reasoning budget (PROVIDERS.md §3.8); `0` disables, `> 0` picks an effort tier (see translation table below) |
-| `PLURNK_FETCH_TIMEOUT` | yes | Universal fetch timeout in ms (PROVIDERS.md §3.9) |
+| `PLURNK_PROVIDERS_REASONING_BUDGET` | yes | Universal reasoning budget (SPEC §4); `0` disables, `> 0` picks an effort tier (see translation table below) |
+| `PLURNK_FETCH_TIMEOUT` | yes | Universal fetch timeout in ms (SPEC §4) |
+| `PLURNK_PROVIDER_RETRY_ATTEMPTS` | yes | Transient-failure retry budget (SPEC §4): `0` disables; `N` retries on 429/5xx/timeout/network with exponential backoff, honoring `Retry-After`. |
 
 ## pricing
 
@@ -63,16 +64,16 @@ For aliases not matching any prefix, set `PLURNK_PROVIDER_CONTEXT_SIZE` explicit
 
 ## reasoning
 
-xAI's reasoning is a tiered `reasoning_effort` body param (`low | medium | high`), not a token budget. The universal `PLURNK_REASON` (a numeric token budget) translates as:
+xAI's reasoning is a tiered `reasoning_effort` body param (`low | medium | high`), not a token budget. The universal `PLURNK_PROVIDERS_REASONING_BUDGET` (a numeric token budget) translates as:
 
-| PLURNK_REASON | reasoning_effort |
+| PLURNK_PROVIDERS_REASONING_BUDGET | reasoning_effort |
 |---|---|
 | `0` | omit (no reasoning) |
 | `1`–`1000` | `low` |
 | `1001`–`4000` | `medium` |
 | `4001`+ | `high` |
 
-Some Grok models reject the param entirely (the non-reasoning variants); requests against those will 400 if `PLURNK_REASON > 0`. Pick a reasoning-capable alias (`grok-4.3`, `grok-4.20-0309-reasoning`) when reasoning is required.
+Some Grok models reject the param entirely (the non-reasoning variants); requests against those will 400 if `PLURNK_PROVIDERS_REASONING_BUDGET > 0`. Pick a reasoning-capable alias (`grok-4.3`, `grok-4.20-0309-reasoning`) when reasoning is required.
 
 ## tokenization
 
