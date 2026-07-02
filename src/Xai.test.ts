@@ -6,7 +6,7 @@ import Xai from "./Xai.ts";
 // to exercise one specific knob override its key on top of this.
 const baseEnv = Object.freeze({
     XAI_API_KEY: "sk-test",
-    PLURNK_FETCH_TIMEOUT: "600000",
+    PLURNK_PROVIDERS_FETCH_TIMEOUT: "600000",
     PLURNK_PROVIDERS_REASONING_BUDGET: "0",
     PLURNK_PROVIDERS_RETRY_ATTEMPTS: "0",
 });
@@ -36,10 +36,10 @@ test("fromEnv: throws when XAI_API_KEY is unset", async () => {
     await assert.rejects(() => Xai.fromEnv({}, "grok-4.3"), /XAI_API_KEY must be set/);
 });
 
-test("fromEnv: throws when PLURNK_FETCH_TIMEOUT is unset", async () => {
+test("fromEnv: throws when PLURNK_PROVIDERS_FETCH_TIMEOUT is unset", async () => {
     await assert.rejects(
         () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_PROVIDERS_REASONING_BUDGET: "0" }, "grok-4.3"),
-        /PLURNK_FETCH_TIMEOUT must be set/,
+        /PLURNK_PROVIDERS_FETCH_TIMEOUT must be set/,
     );
 });
 
