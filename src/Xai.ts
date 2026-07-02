@@ -18,7 +18,7 @@ import {
 
 const DEFAULT_BASE_URL = "https://api.x.ai/v1";
 
-// Context windows from docs.x.ai/developers/models (May 2026). xAI does not
+// Context windows from docs.x.ai/developers/models (July 2026). xAI does not
 // expose context_window via any documented API endpoint — /v1/language-models
 // returns rich pricing data but no window, /v1/models is OpenAI-sparse.
 // Operators can override via PLURNK_PROVIDER_CONTEXT_SIZE for new aliases not
@@ -28,6 +28,8 @@ const CONTEXT_BY_PREFIX: ReadonlyArray<[string, number]> = Object.freeze([
     ["grok-4.1-fast", 2_000_000],
     ["grok-4.20", 1_000_000],
     ["grok-4.3", 1_000_000],
+    // Grok Build (grok-build-0.1, alias grok-code-fast-1) — the coding model, 256k.
+    ["grok-build", 256_000],
     ["grok-code-fast", 256_000],
 ]);
 

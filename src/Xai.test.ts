@@ -82,6 +82,12 @@ test("fromEnv: resolves contextSize from the prefix table and probes pricing", a
     assert.equal(calls[0], "https://api.x.ai/v1/language-models/grok-4.3");
 });
 
+test("fromEnv: Grok Build (grok-build-0.1) resolves to 256k", async () => {
+    mockPricing({ ...pricingEntry, id: "grok-build-0.1" });
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-build-0.1");
+    assert.equal(p.contextSize, 256_000);
+});
+
 test("fromEnv: longest-prefix-wins on context lookup", async () => {
     mockPricing({ ...pricingEntry, id: "grok-4.20-multi-agent-0309" });
     // "grok-4.20-multi-agent" prefix (2M) wins over "grok-4.20" prefix (1M).
