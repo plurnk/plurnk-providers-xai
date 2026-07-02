@@ -8,7 +8,7 @@ const baseEnv = Object.freeze({
     XAI_API_KEY: "sk-test",
     PLURNK_FETCH_TIMEOUT: "600000",
     PLURNK_PROVIDERS_REASONING_BUDGET: "0",
-    PLURNK_PROVIDER_RETRY_ATTEMPTS: "0",
+    PLURNK_PROVIDERS_RETRY_ATTEMPTS: "0",
 });
 
 // Mock the /language-models pricing probe. `entry` becomes the per-id response.
@@ -50,10 +50,10 @@ test("fromEnv: throws when PLURNK_PROVIDERS_REASONING_BUDGET is non-numeric", as
     );
 });
 
-test("fromEnv: throws when PLURNK_PROVIDER_CONTEXT_SIZE is non-numeric", async () => {
+test("fromEnv: throws when PLURNK_PROVIDERS_CONTEXT_SIZE is non-numeric", async () => {
     await assert.rejects(
-        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDER_CONTEXT_SIZE: "huge" }, "grok-4.3"),
-        /PLURNK_PROVIDER_CONTEXT_SIZE must be a non-negative integer/,
+        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_CONTEXT_SIZE: "huge" }, "grok-4.3"),
+        /PLURNK_PROVIDERS_CONTEXT_SIZE must be a non-negative integer/,
     );
 });
 
@@ -95,13 +95,13 @@ test("fromEnv: longest-prefix-wins on context lookup", async () => {
     assert.equal(p.contextSize, 2_000_000);
 });
 
-test("fromEnv: PLURNK_PROVIDER_CONTEXT_SIZE env overrides the prefix table", async () => {
+test("fromEnv: PLURNK_PROVIDERS_CONTEXT_SIZE env overrides the prefix table", async () => {
     mockPricing(pricingEntry);
-    const p = await Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDER_CONTEXT_SIZE: "131072" }, "grok-4.3");
+    const p = await Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_CONTEXT_SIZE: "131072" }, "grok-4.3");
     assert.equal(p.contextSize, 131072);
 });
 
-test("fromEnv: throws when alias matches no prefix AND PLURNK_PROVIDER_CONTEXT_SIZE unset", async () => {
+test("fromEnv: throws when alias matches no prefix AND PLURNK_PROVIDERS_CONTEXT_SIZE unset", async () => {
     mockPricing(pricingEntry); // pricing is fine; the throw is specifically the context one
     await assert.rejects(
         () => Xai.fromEnv({ ...baseEnv }, "grok-7-unknown"),
