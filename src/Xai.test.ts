@@ -7,7 +7,7 @@ import Xai from "./Xai.ts";
 const baseEnv = Object.freeze({
     XAI_API_KEY: "sk-test",
     PLURNK_PROVIDERS_FETCH_TIMEOUT: "600000",
-    PLURNK_PROVIDERS_REASONING_BUDGET: "0",
+    PLURNK_PROVIDERS_THINKING: "off",
     PLURNK_PROVIDERS_RETRY_ATTEMPTS: "0",
 });
 
@@ -38,15 +38,15 @@ test("fromEnv: throws when XAI_API_KEY is unset", async () => {
 
 test("fromEnv: throws when PLURNK_PROVIDERS_FETCH_TIMEOUT is unset", async () => {
     await assert.rejects(
-        () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_PROVIDERS_REASONING_BUDGET: "0" }, "grok-4.3"),
+        () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_PROVIDERS_THINKING: "off" }, "grok-4.3"),
         /PLURNK_PROVIDERS_FETCH_TIMEOUT must be set/,
     );
 });
 
-test("fromEnv: throws when PLURNK_PROVIDERS_REASONING_BUDGET is non-numeric", async () => {
+test("fromEnv: throws when PLURNK_PROVIDERS_THINKING is not a valid mode", async () => {
     await assert.rejects(
-        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_REASONING_BUDGET: "lots" }, "grok-4.3"),
-        /PLURNK_PROVIDERS_REASONING_BUDGET must be an integer >= -1/,
+        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_THINKING: "8192" }, "grok-4.3"),
+        /PLURNK_PROVIDERS_THINKING must be one of/,
     );
 });
 
@@ -156,10 +156,3 @@ test("costFor: reasoning billed at completion rate while distinct cached rate st
     );
 });
 
-test("countTokens: cl100k tokenizer (hello world = 2)", async () => {
-    mockPricing(pricingEntry);
-    const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
-    assert.equal(p.countTokens(""), 0);
-    assert.equal(p.countTokens("hello world"), 2);
-    assert.equal(p.countTokens("Paris"), 1);
-});

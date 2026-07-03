@@ -9,10 +9,9 @@ import {
     OpenAICompatProvider,
     parseOptionalInt,
     parseRequiredInt,
-    reasoningBudgetFromEnv,
+    thinkingFromEnv,
     providerSource,
     requireEnv,
-    tokenizerFor,
     type Provider,
 } from "@plurnk/plurnk-providers";
 
@@ -47,7 +46,7 @@ export default class Xai {
     static async fromEnv(env: NodeJS.ProcessEnv, model: string): Promise<Provider> {
         const apiKey = requireEnv(env.XAI_API_KEY, "XAI_API_KEY", "xai");
         const fetchTimeoutMs = parseRequiredInt(env.PLURNK_PROVIDERS_FETCH_TIMEOUT, "PLURNK_PROVIDERS_FETCH_TIMEOUT", "xai");
-        const reasoningBudget = reasoningBudgetFromEnv(env, "xai");
+        const thinking = thinkingFromEnv(env, "xai");
         const rawBase = env.XAI_BASE_URL !== undefined && env.XAI_BASE_URL.length > 0
             ? env.XAI_BASE_URL
             : DEFAULT_BASE_URL;
@@ -73,12 +72,11 @@ export default class Xai {
             fetchTimeoutMs,
             headers: { Authorization: `Bearer ${apiKey}` },
             contextSize,
-            reasoningBudget,
+            thinking,
             retryAttempts: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_ATTEMPTS, "PLURNK_PROVIDERS_RETRY_ATTEMPTS", "xai"),
             reasoningStyle: "effort",
             // Per xAI's docs Grok uses cl100k_base. All current Grok variants
             // share the same tokenizer — no per-model dispatch needed.
-            countTokens: tokenizerFor("cl100k"),
             // Three-rate cost: cached tokens are a SUBSET of prompt_tokens,
             // billed at the discounted cached rate; the non-cached portion is
             // billed at the full prompt rate. computeCost bills billable output
