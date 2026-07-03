@@ -74,8 +74,9 @@ export default class Xai {
             headers: { Authorization: `Bearer ${apiKey}` },
             contextSize,
             thinking,
-            grammarTemperature: parseRequiredFloat(env.PLURNK_PROVIDERS_GRAMMAR_TEMPERATURE, "PLURNK_PROVIDERS_GRAMMAR_TEMPERATURE", "xai", 0),
-            grammarRepeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_GRAMMAR_REPEAT_PENALTY, "PLURNK_PROVIDERS_GRAMMAR_REPEAT_PENALTY", "xai", 0),
+            temperature: parseRequiredFloat(env.PLURNK_PROVIDERS_TEMPERATURE, "PLURNK_PROVIDERS_TEMPERATURE", "xai", 0),
+            repeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_REPEAT_PENALTY, "PLURNK_PROVIDERS_REPEAT_PENALTY", "xai", 0),
+            retryDelayMs: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_DELAY, "PLURNK_PROVIDERS_RETRY_DELAY", "xai"),
             retryAttempts: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_ATTEMPTS, "PLURNK_PROVIDERS_RETRY_ATTEMPTS", "xai"),
             reasoningStyle: "effort",
             // Per xAI's docs Grok uses cl100k_base. All current Grok variants
