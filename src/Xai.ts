@@ -10,6 +10,7 @@ import {
     parseOptionalInt,
     parseRequiredInt,
     thinkingFromEnv,
+    parseRequiredFloat,
     providerSource,
     requireEnv,
     type Provider,
@@ -73,6 +74,8 @@ export default class Xai {
             headers: { Authorization: `Bearer ${apiKey}` },
             contextSize,
             thinking,
+            grammarTemperature: parseRequiredFloat(env.PLURNK_PROVIDERS_GRAMMAR_TEMPERATURE, "PLURNK_PROVIDERS_GRAMMAR_TEMPERATURE", "xai", 0),
+            grammarRepeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_GRAMMAR_REPEAT_PENALTY, "PLURNK_PROVIDERS_GRAMMAR_REPEAT_PENALTY", "xai", 0),
             retryAttempts: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_ATTEMPTS, "PLURNK_PROVIDERS_RETRY_ATTEMPTS", "xai"),
             reasoningStyle: "effort",
             // Per xAI's docs Grok uses cl100k_base. All current Grok variants
