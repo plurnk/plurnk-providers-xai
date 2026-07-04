@@ -43,6 +43,17 @@ const lookupContextByPrefix = (model: string): number | null => {
     return best?.ctx ?? null;
 };
 
+// Reasoning capability by family (#35). Grok Build (grok-build-0.1 /
+// grok-code-fast-1) is a coding model with NO reasoning channel — xAI 400s on
+// `reasoning_effort` for it, whatever the value ("Model … does not support
+// parameter reasoningEffort"). Every other Grok reasons. Model-capability, the
+// same shape as the context table: send the reasoning param ONLY where the model
+// accepts it. A non-reasoning model gets reasoningStyle "none" — no wire param at
+// all — so a globally-set THINKING intent can't break the coding alias. This is
+// the accurate mapping (the channel doesn't exist), not a silent degradation.
+const NON_REASONING_PREFIXES: readonly string[] = ["grok-build", "grok-code-fast"];
+const modelReasons = (model: string): boolean => !NON_REASONING_PREFIXES.some((p) => model.startsWith(p));
+
 export default class Xai {
     static async fromEnv(env: NodeJS.ProcessEnv, model: string): Promise<Provider> {
         const apiKey = requireEnv(env.XAI_API_KEY, "XAI_API_KEY", "xai");
@@ -78,7 +89,7 @@ export default class Xai {
             repeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_REPEAT_PENALTY, "PLURNK_PROVIDERS_REPEAT_PENALTY", "xai", 0),
             retryDelayMs: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_DELAY, "PLURNK_PROVIDERS_RETRY_DELAY", "xai"),
             retryAttempts: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_ATTEMPTS, "PLURNK_PROVIDERS_RETRY_ATTEMPTS", "xai"),
-            reasoningStyle: "effort",
+            reasoningStyle: modelReasons(model) ? "effort" : "none",
             // Per xAI's docs Grok uses cl100k_base. All current Grok variants
             // share the same tokenizer — no per-model dispatch needed.
             // Three-rate cost: cached tokens are a SUBSET of prompt_tokens,

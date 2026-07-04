@@ -88,6 +88,36 @@ test("fromEnv: Grok Build (grok-build-0.1) resolves to 256k", async () => {
     assert.equal(p.contextSize, 256_000);
 });
 
+// #35: grok-build / grok-code-fast have NO reasoning channel — the provider must
+// never emit reasoning_effort for them (xAI 400s), even under a THINKING intent.
+const wireBodyFor = async (model: string, thinkingEnv: Record<string, string>) => {
+    let body: Record<string, unknown> = {};
+    mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
+        if (String(url).includes("/language-models")) return new Response(JSON.stringify({ ...pricingEntry, id: model }), { status: 200 });
+        if (init?.body !== undefined) body = JSON.parse(String(init.body));
+        return new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode("data: [DONE]")); c.close(); } }), { status: 200 });
+    });
+    const p = await Xai.fromEnv({ ...baseEnv, ...thinkingEnv }, model);
+    await p.generate({ runId: "r", messages: [] });
+    mock.restoreAll();
+    return body;
+};
+
+test("#35: grok-build emits NO reasoning_effort even with THINKING=on (coding model, no reasoning channel)", async () => {
+    const body = await wireBodyFor("grok-build-0.1", { PLURNK_PROVIDERS_THINKING: "on", PLURNK_PROVIDERS_THINKING_CAPACITY: "4096" });
+    assert.equal("reasoning_effort" in body, false);
+});
+
+test("#35: grok-code-fast likewise sends no reasoning param", async () => {
+    const body = await wireBodyFor("grok-code-fast-1", { PLURNK_PROVIDERS_THINKING: "adaptive" });
+    assert.equal("reasoning_effort" in body, false);
+});
+
+test("#35: a reasoning grok (grok-4.3) STILL sends reasoning_effort — the fix is model-scoped", async () => {
+    const body = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_THINKING: "on", PLURNK_PROVIDERS_THINKING_CAPACITY: "4096" });
+    assert.equal(body.reasoning_effort, "high");
+});
+
 test("fromEnv: longest-prefix-wins on context lookup", async () => {
     mockPricing({ ...pricingEntry, id: "grok-4.20-multi-agent-0309" });
     // "grok-4.20-multi-agent" prefix (2M) wins over "grok-4.20" prefix (1M).
