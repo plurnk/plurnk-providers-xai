@@ -118,6 +118,14 @@ test("#35: a reasoning grok (grok-4.3) STILL sends reasoning_effort — the fix 
     assert.equal(body.reasoning_effort, "high");
 });
 
+test("#36: data-capture knobs flow through the xai daughter (grok scraping alias)", async () => {
+    const on = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_THINKING: "off", PLURNK_PROVIDERS_LOGPROB: "3" });
+    assert.equal(on.logprobs, true);
+    assert.equal(on.top_logprobs, 3);
+    const off = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_THINKING: "off" });
+    assert.equal("logprobs" in off, false); // off by default — serving turns unchanged
+});
+
 test("fromEnv: longest-prefix-wins on context lookup", async () => {
     mockPricing({ ...pricingEntry, id: "grok-4.20-multi-agent-0309" });
     // "grok-4.20-multi-agent" prefix (2M) wins over "grok-4.20" prefix (1M).

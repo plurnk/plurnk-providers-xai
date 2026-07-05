@@ -10,6 +10,7 @@ import {
     parseOptionalInt,
     parseRequiredInt,
     thinkingFromEnv,
+    dataCaptureFromEnv,
     parseRequiredFloat,
     providerSource,
     requireEnv,
@@ -89,6 +90,8 @@ export default class Xai {
             repeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_REPEAT_PENALTY, "PLURNK_PROVIDERS_REPEAT_PENALTY", "xai", 0),
             retryDelayMs: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_DELAY, "PLURNK_PROVIDERS_RETRY_DELAY", "xai"),
             retryAttempts: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_ATTEMPTS, "PLURNK_PROVIDERS_RETRY_ATTEMPTS", "xai"),
+            // Opt-in data capture (#36), off by default, per-alias-scopable.
+            ...dataCaptureFromEnv(env, "xai"),
             reasoningStyle: modelReasons(model) ? "effort" : "none",
             // Per xAI's docs Grok uses cl100k_base. All current Grok variants
             // share the same tokenizer — no per-model dispatch needed.
