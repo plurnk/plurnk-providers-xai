@@ -109,16 +109,25 @@ export default class Xai {
     }
 }
 
-// xAI exposes three distinct rates per model in pico-dollars per token.
-// `cached` is xAI's prompt-cache discount (typically much lower than prompt);
-// applied to the subset of prompt_tokens that came from cache.
+// xAI's price fields are denominated in "usd_ticks", NOT pico-USD (#38). One tick
+// is 1e-10 USD = 100 pico — verified money-grade against the API's own authority:
+// a live completion's usage.cost_in_usd_ticks equals Σ(tokens × raw_price) exactly
+// (129/64-cached prompt + 144 output at 10000/2000/20000 ⇒ 3,658,000), and the
+// only scalar giving grok-code-fast-1 a realistic price ($1/$2 per Mtok, matching
+// the live 1:2 field ratio) is 1 tick = 1e-10 USD. Treating raw as pico undercharges
+// 100×. So costFor() (pico contract) requires raw × TICK_TO_PICO.
+const TICK_TO_PICO = 100;
+
+// Three distinct rates per model, converted to pico-USD per token. `cached` is
+// xAI's prompt-cache discount (much lower than prompt), applied to the subset of
+// prompt_tokens that came from cache.
 type XaiPricing = {
     prompt_pico_per_token: number;
     cached_pico_per_token: number;
     completion_pico_per_token: number;
 };
 
-// /v1/language-models/{id} returns per-model pricing in pico-dollars/token.
+// /v1/language-models/{id} returns per-model pricing in usd_ticks/token.
 // Falls back to /v1/language-models (list) if the per-id endpoint 404s
 // (rare; new alias not yet exposed).
 type ModelPricingResponse = {
@@ -167,8 +176,8 @@ const toPricing = (entry: ModelPricingResponse, model: string): XaiPricing => {
         throw new Error(`xAI /language-models entry for "${model}" missing prompt/completion prices`);
     }
     return {
-        prompt_pico_per_token: entry.prompt_text_token_price,
-        cached_pico_per_token: entry.cached_prompt_text_token_price ?? entry.prompt_text_token_price,
-        completion_pico_per_token: entry.completion_text_token_price,
+        prompt_pico_per_token: entry.prompt_text_token_price * TICK_TO_PICO,
+        cached_pico_per_token: (entry.cached_prompt_text_token_price ?? entry.prompt_text_token_price) * TICK_TO_PICO,
+        completion_pico_per_token: entry.completion_text_token_price * TICK_TO_PICO,
     };
 };

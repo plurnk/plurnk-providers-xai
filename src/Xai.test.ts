@@ -166,31 +166,48 @@ test("fromEnv: falls back to list endpoint on 404 from per-id endpoint", async (
 
 // — Provider surface on the constructed instance —
 
+// Raw price fields are usd_ticks (1e-10 USD); costFor returns pico (1e-12) — so
+// every expected value is Σ(tokens × raw_price) × 100 (#38).
 test("costFor: three-rate math with cached subset of prompt", async () => {
     mockPricing(pricingEntry);
     const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
     // 1000 prompt (200 cached) + 100 completion
-    // = (800 × 12500) + (200 × 2000) + (100 × 25000)
-    // = 10_000_000 + 400_000 + 2_500_000 = 12_900_000 pico
-    assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 200, reasoning: 0, total: 1100 }), 12_900_000);
+    // = [(800 × 12500) + (200 × 2000) + (100 × 25000)] × 100
+    // = 12_900_000 ticks × 100 = 1_290_000_000 pico
+    assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 200, reasoning: 0, total: 1100 }), 1_290_000_000);
 });
 
 test("costFor: cached=0 collapses to prompt+completion", async () => {
     mockPricing(pricingEntry);
     const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
-    // 1000 × 12500 + 100 × 25000 = 12_500_000 + 2_500_000 = 15_000_000
-    assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 0, reasoning: 0, total: 1100 }), 15_000_000);
+    // (1000 × 12500 + 100 × 25000) × 100 = 15_000_000 ticks × 100 = 1_500_000_000 pico
+    assert.equal(p.costFor({ prompt: 1000, completion: 100, cached: 0, reasoning: 0, total: 1100 }), 1_500_000_000);
 });
 
 test("costFor: reasoning billed at completion rate while distinct cached rate still applies", async () => {
     mockPricing(pricingEntry);
     const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
     // 1000 prompt (200 cached) + 100 completion + 50 reasoning
-    // = (800 × 12500) + (200 × 2000) + ((100 + 50) × 25000)
-    // = 10_000_000 + 400_000 + 3_750_000 = 14_150_000 pico
+    // = [(800 × 12500) + (200 × 2000) + ((100 + 50) × 25000)] × 100
+    // = 14_150_000 ticks × 100 = 1_415_000_000 pico
     assert.equal(
         p.costFor({ prompt: 1000, completion: 100, cached: 200, reasoning: 50, total: 1150 }),
-        14_150_000,
+        1_415_000_000,
+    );
+});
+
+// #38 money-grade anchor: costFor(usage) must equal the backend's own
+// cost_in_usd_ticks × 100, reconciled from a LIVE grok-code-fast-1 completion
+// (usage {prompt:129, cached:64, completion:1, reasoning:143}, cost_in_usd_ticks:
+// 3_658_000 at prices 10000/2000/20000). This is the whole point of the fix — the
+// provider's cost is truthful pico-USD, not a 100×-undercharged tick count.
+test("#38: costFor equals the live cost_in_usd_ticks × 100 (truthful pico, not undercharged ticks)", async () => {
+    mockPricing({ ...pricingEntry, id: "grok-code-fast-1", prompt_text_token_price: 10000, cached_prompt_text_token_price: 2000, completion_text_token_price: 20000 });
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-code-fast-1");
+    const COST_IN_USD_TICKS = 3_658_000; // authoritative, from the live wire
+    assert.equal(
+        p.costFor({ prompt: 129, cached: 64, completion: 1, reasoning: 143, total: 273 }),
+        COST_IN_USD_TICKS * 100,
     );
 });
 
