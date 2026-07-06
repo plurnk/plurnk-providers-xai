@@ -99,11 +99,20 @@ export default class Xai {
             // billed at the discounted cached rate; the non-cached portion is
             // billed at the full prompt rate. computeCost bills billable output
             // (completion + reasoning) at the completion rate.
-            costFor: (usage) => computeCost(usage, {
-                input: pricing.prompt_pico_per_token,
-                output: pricing.completion_pico_per_token,
-                cached: pricing.cached_pico_per_token,
-            }),
+            //
+            // Long-context tier (#39): when the request's PROMPT exceeds
+            // long_context_threshold, xAI bills the WHOLE request at the 2× long
+            // rates — verified money-grade (219,131-token prompt reconciled to the
+            // long tier's cost_in_usd_ticks exactly, double the base figure). The
+            // gauge is prompt tokens (cached ⊆ prompt); the boundary is `>` (the
+            // exact ±1-token edge at the threshold is a rounding non-event).
+            costFor: (usage) => {
+                const long = pricing.long !== null
+                    && pricing.longContextThreshold !== null
+                    && usage.prompt > pricing.longContextThreshold;
+                const rates = long ? pricing.long! : pricing.base;
+                return computeCost(usage, { input: rates.prompt, output: rates.completion, cached: rates.cached });
+            },
             source: providerSource("xai"),
         });
     }
@@ -118,16 +127,20 @@ export default class Xai {
 // 100×. So costFor() (pico contract) requires raw × TICK_TO_PICO.
 const TICK_TO_PICO = 100;
 
-// Three distinct rates per model, converted to pico-USD per token. `cached` is
-// xAI's prompt-cache discount (much lower than prompt), applied to the subset of
+// Three distinct rates per token, converted to pico-USD. `cached` is xAI's
+// prompt-cache discount (much lower than prompt), applied to the subset of
 // prompt_tokens that came from cache.
+type Rates = { prompt: number; cached: number; completion: number };
+// `base` always applies; `long` is the 2× tier used when prompt tokens exceed
+// `longContextThreshold` (#39). Both null when the model exposes no long tier.
 type XaiPricing = {
-    prompt_pico_per_token: number;
-    cached_pico_per_token: number;
-    completion_pico_per_token: number;
+    base: Rates;
+    long: Rates | null;
+    longContextThreshold: number | null;
 };
 
-// /v1/language-models/{id} returns per-model pricing in usd_ticks/token.
+// /v1/language-models/{id} returns per-model pricing in usd_ticks/token, with a
+// parallel `*_long_context` tier gated by `long_context_threshold` (prompt tokens).
 // Falls back to /v1/language-models (list) if the per-id endpoint 404s
 // (rare; new alias not yet exposed).
 type ModelPricingResponse = {
@@ -135,6 +148,10 @@ type ModelPricingResponse = {
     prompt_text_token_price?: number;
     cached_prompt_text_token_price?: number;
     completion_text_token_price?: number;
+    prompt_text_token_price_long_context?: number;
+    cached_prompt_text_token_price_long_context?: number;
+    completion_text_token_price_long_context?: number;
+    long_context_threshold?: number;
 };
 type ListResponse = { models?: ModelPricingResponse[] };
 
@@ -175,9 +192,23 @@ const toPricing = (entry: ModelPricingResponse, model: string): XaiPricing => {
     if (entry.prompt_text_token_price === undefined || entry.completion_text_token_price === undefined) {
         throw new Error(`xAI /language-models entry for "${model}" missing prompt/completion prices`);
     }
-    return {
-        prompt_pico_per_token: entry.prompt_text_token_price * TICK_TO_PICO,
-        cached_pico_per_token: (entry.cached_prompt_text_token_price ?? entry.prompt_text_token_price) * TICK_TO_PICO,
-        completion_pico_per_token: entry.completion_text_token_price * TICK_TO_PICO,
+    const base: Rates = {
+        prompt: entry.prompt_text_token_price * TICK_TO_PICO,
+        cached: (entry.cached_prompt_text_token_price ?? entry.prompt_text_token_price) * TICK_TO_PICO,
+        completion: entry.completion_text_token_price * TICK_TO_PICO,
     };
+    // The long tier is present only when the entry carries BOTH bounds and rates
+    // (#39). A partial entry (threshold without long prices, or vice versa) leaves
+    // it off — never a half-configured tier that mis-bills.
+    const hasLong = entry.long_context_threshold !== undefined
+        && entry.prompt_text_token_price_long_context !== undefined
+        && entry.completion_text_token_price_long_context !== undefined;
+    const long: Rates | null = hasLong
+        ? {
+            prompt: entry.prompt_text_token_price_long_context! * TICK_TO_PICO,
+            cached: (entry.cached_prompt_text_token_price_long_context ?? entry.prompt_text_token_price_long_context!) * TICK_TO_PICO,
+            completion: entry.completion_text_token_price_long_context! * TICK_TO_PICO,
+        }
+        : null;
+    return { base, long, longContextThreshold: hasLong ? entry.long_context_threshold! : null };
 };

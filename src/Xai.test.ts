@@ -211,3 +211,41 @@ test("#38: costFor equals the live cost_in_usd_ticks × 100 (truthful pico, not 
     );
 });
 
+// #39 long-context tier — the live grok-code-fast-1 entry: base 10000/2000/20000,
+// long 2× (20000/4000/40000), threshold 200000 (prompt tokens).
+const longEntry = {
+    id: "grok-code-fast-1",
+    prompt_text_token_price: 10000, cached_prompt_text_token_price: 2000, completion_text_token_price: 20000,
+    prompt_text_token_price_long_context: 20000, cached_prompt_text_token_price_long_context: 4000, completion_text_token_price_long_context: 40000,
+    long_context_threshold: 200000,
+};
+
+test("#39: prompt at/under the threshold bills at BASE rates", async () => {
+    mockPricing(longEntry);
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-code-fast-1");
+    // prompt 129 (< 200000) → base: same as #38's 3_658_000 × 100
+    assert.equal(p.costFor({ prompt: 129, cached: 64, completion: 1, reasoning: 143, total: 273 }), 365_800_000);
+});
+
+test("#39: prompt over the threshold bills the WHOLE request at the 2× LONG tier — live cost_in_usd_ticks × 100", async () => {
+    mockPricing(longEntry);
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-code-fast-1");
+    // LIVE reconciliation: prompt 219131 (cached 64) + 1 completion + 203 reasoning,
+    // cost_in_usd_ticks 4_389_756_000 (long tier). costFor = ticks × 100.
+    const COST_IN_USD_TICKS_LONG = 4_389_756_000;
+    assert.equal(
+        p.costFor({ prompt: 219_131, cached: 64, completion: 1, reasoning: 203, total: 219_335 }),
+        COST_IN_USD_TICKS_LONG * 100,
+    );
+    // The same usage at base rates would be exactly half — the undercharge #39 closes.
+    assert.equal(COST_IN_USD_TICKS_LONG * 100, 2 * ((219_131 - 64) * 10000 + 64 * 2000 + 204 * 20000) * 100);
+});
+
+test("#39: an entry without the long tier bills at base regardless of prompt size (no half-configured tier)", async () => {
+    mockPricing(pricingEntry); // grok-4.3 entry — no *_long_context fields
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
+    const huge = p.costFor({ prompt: 500_000, cached: 0, completion: 0, reasoning: 0, total: 500_000 });
+    // 500000 × 12500 × 100 (base) — never a phantom long tier
+    assert.equal(huge, 500_000 * 12_500 * 100);
+});
+
