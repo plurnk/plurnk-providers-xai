@@ -1,42 +1,42 @@
 {
-    "name": "@plurnk/plurnk-providers-xai",
-    "version": "0.14.2",
-    "description": "xAI provider for plurnk-service. Routes xai/{model} aliases through xAI's OpenAI-compatible chat-completions endpoint; pulls real per-token pricing from /v1/language-models at fromEnv time.",
-    "type": "module",
-    "license": "MIT",
-    "publishConfig": {
-        "access": "public"
+  "name": "@plurnk/plurnk-providers-xai",
+  "version": "0.14.2",
+  "description": "xAI provider for plurnk-service. Routes xai/{model} aliases through xAI's OpenAI-compatible chat-completions endpoint; pulls real per-token pricing from /v1/language-models at fromEnv time.",
+  "type": "module",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=26"
+  },
+  "plurnk": {
+    "kind": "provider",
+    "name": "xai"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
-    "engines": {
-        "node": ">=26"
-    },
-    "plurnk": {
-        "kind": "provider",
-        "name": "xai"
-    },
-    "exports": {
-        ".": {
-            "types": "./dist/index.d.ts",
-            "default": "./dist/index.js"
-        },
-        "./package.json": "./package.json"
-    },
-    "files": [
-        "dist/**/*",
-        "README.md"
-    ],
-    "scripts": {
-        "test:lint": "tsc --noEmit",
-        "test:unit": "node --test src/**/*.test.ts",
-        "build:dist": "tsc -p tsconfig.build.json",
-        "build": "npm run build:dist",
-        "prepare": "npm run build"
-    },
-    "devDependencies": {
-        "@types/node": "^26.0.0",
-        "typescript": "^6.0.3"
-    },
-    "peerDependencies": {
-        "@plurnk/plurnk-providers": ">=0.34.0 <1.0.0"
-    }
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "test:lint": "tsc --noEmit",
+    "test:unit": "node --test src/**/*.test.ts",
+    "build:dist": "tsc -p tsconfig.build.json",
+    "build": "npm run build:dist",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "typescript": "^7.0.2"
+  },
+  "peerDependencies": {
+    "@plurnk/plurnk-providers": ">=0.34.0 <1.0.0"
+  }
 }
