@@ -9,7 +9,7 @@ import {
     OpenAICompatProvider,
     parseOptionalInt,
     parseRequiredInt,
-    thinkingFromEnv,
+    reasoningFromEnv,
     dataCaptureFromEnv,
     parseRequiredFloat,
     providerSource,
@@ -59,7 +59,7 @@ export default class Xai {
     static async fromEnv(env: NodeJS.ProcessEnv, model: string): Promise<Provider> {
         const apiKey = requireEnv(env.XAI_API_KEY, "XAI_API_KEY", "xai");
         const fetchTimeoutMs = parseRequiredInt(env.PLURNK_PROVIDERS_FETCH_TIMEOUT, "PLURNK_PROVIDERS_FETCH_TIMEOUT", "xai");
-        const thinking = thinkingFromEnv(env, "xai");
+        const reasoning = reasoningFromEnv(env, "xai");
         const rawBase = env.XAI_BASE_URL !== undefined && env.XAI_BASE_URL.length > 0
             ? env.XAI_BASE_URL
             : DEFAULT_BASE_URL;
@@ -85,9 +85,10 @@ export default class Xai {
             fetchTimeoutMs,
             headers: { Authorization: `Bearer ${apiKey}` },
             contextSize,
-            thinking,
+            reasoning,
             temperature: parseRequiredFloat(env.PLURNK_PROVIDERS_TEMPERATURE, "PLURNK_PROVIDERS_TEMPERATURE", "xai", 0),
             repeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_REPEAT_PENALTY, "PLURNK_PROVIDERS_REPEAT_PENALTY", "xai", 0),
+            frequencyPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_FREQUENCY_PENALTY, "PLURNK_PROVIDERS_FREQUENCY_PENALTY", "xai", 0),
             retryDelayMs: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_DELAY, "PLURNK_PROVIDERS_RETRY_DELAY", "xai"),
             retryAttempts: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_ATTEMPTS, "PLURNK_PROVIDERS_RETRY_ATTEMPTS", "xai"),
             // Opt-in data capture (#36), off by default, per-alias-scopable.

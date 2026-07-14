@@ -7,7 +7,7 @@ import Xai from "./Xai.ts";
 const baseEnv = Object.freeze({
     XAI_API_KEY: "sk-test",
     PLURNK_PROVIDERS_FETCH_TIMEOUT: "600000",
-    PLURNK_PROVIDERS_THINKING: "off", PLURNK_PROVIDERS_TEMPERATURE: "0.2", PLURNK_PROVIDERS_REPEAT_PENALTY: "1.15", PLURNK_PROVIDERS_RETRY_DELAY: "1", PLURNK_PROVIDERS_PROBE_ATTEMPTS: "3", PLURNK_PROVIDERS_PROBE_DELAY: "1",
+    PLURNK_PROVIDERS_REASONING: "off", PLURNK_PROVIDERS_TEMPERATURE: "0.2", PLURNK_PROVIDERS_REPEAT_PENALTY: "1.15", PLURNK_PROVIDERS_FREQUENCY_PENALTY: "0.4", PLURNK_PROVIDERS_RETRY_DELAY: "1", PLURNK_PROVIDERS_PROBE_ATTEMPTS: "3", PLURNK_PROVIDERS_PROBE_DELAY: "1",
     PLURNK_PROVIDERS_RETRY_ATTEMPTS: "0",
 });
 
@@ -38,15 +38,15 @@ test("fromEnv: throws when XAI_API_KEY is unset", async () => {
 
 test("fromEnv: throws when PLURNK_PROVIDERS_FETCH_TIMEOUT is unset", async () => {
     await assert.rejects(
-        () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_PROVIDERS_THINKING: "off" }, "grok-4.3"),
+        () => Xai.fromEnv({ XAI_API_KEY: "sk-test", PLURNK_PROVIDERS_REASONING: "off" }, "grok-4.3"),
         /PLURNK_PROVIDERS_FETCH_TIMEOUT must be set/,
     );
 });
 
-test("fromEnv: throws when PLURNK_PROVIDERS_THINKING is not a valid mode", async () => {
+test("fromEnv: throws when PLURNK_PROVIDERS_REASONING is not a valid mode", async () => {
     await assert.rejects(
-        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_THINKING: "8192" }, "grok-4.3"),
-        /PLURNK_PROVIDERS_THINKING must be one of/,
+        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_REASONING: "8192" }, "grok-4.3"),
+        /PLURNK_PROVIDERS_REASONING must be one of/,
     );
 });
 
@@ -89,7 +89,7 @@ test("fromEnv: Grok Build (grok-build-0.1) resolves to 256k", async () => {
 });
 
 // #35: grok-build / grok-code-fast have NO reasoning channel — the provider must
-// never emit reasoning_effort for them (xAI 400s), even under a THINKING intent.
+// never emit reasoning_effort for them (xAI 400s), even under a REASONING intent.
 const wireBodyFor = async (model: string, thinkingEnv: Record<string, string>) => {
     let body: Record<string, unknown> = {};
     mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
@@ -103,26 +103,26 @@ const wireBodyFor = async (model: string, thinkingEnv: Record<string, string>) =
     return body;
 };
 
-test("#35: grok-build emits NO reasoning_effort even with THINKING=on (coding model, no reasoning channel)", async () => {
-    const body = await wireBodyFor("grok-build-0.1", { PLURNK_PROVIDERS_THINKING: "on", PLURNK_PROVIDERS_THINKING_CAPACITY: "4096" });
+test("#35: grok-build emits NO reasoning_effort even with REASONING=on (coding model, no reasoning channel)", async () => {
+    const body = await wireBodyFor("grok-build-0.1", { PLURNK_PROVIDERS_REASONING: "on", PLURNK_PROVIDERS_REASONING_BUDGET: "4096" });
     assert.equal("reasoning_effort" in body, false);
 });
 
 test("#35: grok-code-fast likewise sends no reasoning param", async () => {
-    const body = await wireBodyFor("grok-code-fast-1", { PLURNK_PROVIDERS_THINKING: "adaptive" });
+    const body = await wireBodyFor("grok-code-fast-1", { PLURNK_PROVIDERS_REASONING: "adaptive" });
     assert.equal("reasoning_effort" in body, false);
 });
 
 test("#35: a reasoning grok (grok-4.3) STILL sends reasoning_effort — the fix is model-scoped", async () => {
-    const body = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_THINKING: "on", PLURNK_PROVIDERS_THINKING_CAPACITY: "4096" });
+    const body = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_REASONING: "on", PLURNK_PROVIDERS_REASONING_BUDGET: "4096" });
     assert.equal(body.reasoning_effort, "high");
 });
 
 test("#36: data-capture knobs flow through the xai daughter (grok scraping alias)", async () => {
-    const on = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_THINKING: "off", PLURNK_PROVIDERS_LOGPROB: "3" });
+    const on = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_REASONING: "off", PLURNK_PROVIDERS_LOGPROB: "3" });
     assert.equal(on.logprobs, true);
     assert.equal(on.top_logprobs, 3);
-    const off = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_THINKING: "off" });
+    const off = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_REASONING: "off" });
     assert.equal("logprobs" in off, false); // off by default — serving turns unchanged
 });
 
