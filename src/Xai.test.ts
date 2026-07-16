@@ -90,14 +90,14 @@ test("fromEnv: Grok Build (grok-build-0.1) resolves to 256k", async () => {
 
 // #35: grok-build / grok-code-fast have NO reasoning channel — the provider must
 // never emit reasoning_effort for them (xAI 400s), even under a REASONING intent.
-const wireBodyFor = async (model: string, thinkingEnv: Record<string, string>) => {
+const wireBodyFor = async (model: string, reasoningEnv: Record<string, string>) => {
     let body: Record<string, unknown> = {};
     mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
         if (String(url).includes("/language-models")) return new Response(JSON.stringify({ ...pricingEntry, id: model }), { status: 200 });
         if (init?.body !== undefined) body = JSON.parse(String(init.body));
         return new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode("data: [DONE]")); c.close(); } }), { status: 200 });
     });
-    const p = await Xai.fromEnv({ ...baseEnv, ...thinkingEnv }, model);
+    const p = await Xai.fromEnv({ ...baseEnv, ...reasoningEnv }, model);
     await p.generate({ runId: "r", messages: [] });
     mock.restoreAll();
     return body;
@@ -119,7 +119,7 @@ test("#35: a reasoning grok (grok-4.3) STILL sends reasoning_effort — the fix 
 });
 
 test("#36: data-capture knobs flow through the xai daughter (grok scraping alias)", async () => {
-    const on = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_REASONING: "off", PLURNK_PROVIDERS_LOGPROB: "3" });
+    const on = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_REASONING: "off", PLURNK_PROVIDERS_TOP_LOGPROBS: "3" });
     assert.equal(on.logprobs, true);
     assert.equal(on.top_logprobs, 3);
     const off = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_REASONING: "off" });

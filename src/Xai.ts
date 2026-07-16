@@ -50,7 +50,7 @@ const lookupContextByPrefix = (model: string): number | null => {
 // parameter reasoningEffort"). Every other Grok reasons. Model-capability, the
 // same shape as the context table: send the reasoning param ONLY where the model
 // accepts it. A non-reasoning model gets reasoningStyle "none" — no wire param at
-// all — so a globally-set THINKING intent can't break the coding alias. This is
+// all — so a globally-set REASONING intent can't break the coding alias. This is
 // the accurate mapping (the channel doesn't exist), not a silent degradation.
 const NON_REASONING_PREFIXES: readonly string[] = ["grok-build", "grok-code-fast"];
 const modelReasons = (model: string): boolean => !NON_REASONING_PREFIXES.some((p) => model.startsWith(p));
