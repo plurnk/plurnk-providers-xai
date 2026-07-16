@@ -50,10 +50,10 @@ test("fromEnv: throws when PLURNK_PROVIDERS_REASONING is not a valid mode", asyn
     );
 });
 
-test("fromEnv: throws when PLURNK_PROVIDERS_CONTEXT_SIZE is non-numeric", async () => {
+test("fromEnv: throws when PLURNK_PROVIDERS_CONTEXT_WINDOW is non-numeric", async () => {
     await assert.rejects(
-        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_CONTEXT_SIZE: "huge" }, "grok-4.3"),
-        /PLURNK_PROVIDERS_CONTEXT_SIZE must be a non-negative integer/,
+        () => Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_CONTEXT_WINDOW: "huge" }, "grok-4.3"),
+        /PLURNK_PROVIDERS_CONTEXT_WINDOW must be a non-negative integer/,
     );
 });
 
@@ -74,18 +74,18 @@ test("generate failure carries the provider:xai telemetry source (SPEC §12)", a
 
 // — context resolution —
 
-test("fromEnv: resolves contextSize from the prefix table and probes pricing", async () => {
+test("fromEnv: resolves contextWindow from the prefix table and probes pricing", async () => {
     const calls = mockPricing(pricingEntry);
     const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
     assert.equal(p.model, "grok-4.3");
-    assert.equal(p.contextSize, 1_000_000);
+    assert.equal(p.contextWindow, 1_000_000);
     assert.equal(calls[0], "https://api.x.ai/v1/language-models/grok-4.3");
 });
 
 test("fromEnv: Grok Build (grok-build-0.1) resolves to 256k", async () => {
     mockPricing({ ...pricingEntry, id: "grok-build-0.1" });
     const p = await Xai.fromEnv({ ...baseEnv }, "grok-build-0.1");
-    assert.equal(p.contextSize, 256_000);
+    assert.equal(p.contextWindow, 256_000);
 });
 
 // #35: grok-build / grok-code-fast have NO reasoning channel — the provider must
@@ -130,16 +130,16 @@ test("fromEnv: longest-prefix-wins on context lookup", async () => {
     mockPricing({ ...pricingEntry, id: "grok-4.20-multi-agent-0309" });
     // "grok-4.20-multi-agent" prefix (2M) wins over "grok-4.20" prefix (1M).
     const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.20-multi-agent-0309");
-    assert.equal(p.contextSize, 2_000_000);
+    assert.equal(p.contextWindow, 2_000_000);
 });
 
-test("fromEnv: PLURNK_PROVIDERS_CONTEXT_SIZE env overrides the prefix table", async () => {
+test("fromEnv: PLURNK_PROVIDERS_CONTEXT_WINDOW env overrides the prefix table", async () => {
     mockPricing(pricingEntry);
-    const p = await Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_CONTEXT_SIZE: "131072" }, "grok-4.3");
-    assert.equal(p.contextSize, 131072);
+    const p = await Xai.fromEnv({ ...baseEnv, PLURNK_PROVIDERS_CONTEXT_WINDOW: "131072" }, "grok-4.3");
+    assert.equal(p.contextWindow, 131072);
 });
 
-test("fromEnv: throws when alias matches no prefix AND PLURNK_PROVIDERS_CONTEXT_SIZE unset", async () => {
+test("fromEnv: throws when alias matches no prefix AND PLURNK_PROVIDERS_CONTEXT_WINDOW unset", async () => {
     mockPricing(pricingEntry); // pricing is fine; the throw is specifically the context one
     await assert.rejects(
         () => Xai.fromEnv({ ...baseEnv }, "grok-7-unknown"),
@@ -161,7 +161,7 @@ test("fromEnv: falls back to list endpoint on 404 from per-id endpoint", async (
 
     const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3-latest");
     assert.equal(callCount, 2, "should have fallen back to list endpoint");
-    assert.equal(p.contextSize, 1_000_000); // matches "grok-4.3" prefix
+    assert.equal(p.contextWindow, 1_000_000); // matches "grok-4.3" prefix
 });
 
 // — Provider surface on the constructed instance —

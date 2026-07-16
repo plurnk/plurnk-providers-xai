@@ -7,7 +7,7 @@
 import {
     computeCost,
     OpenAICompatProvider,
-    parseOptionalInt,
+    contextWindowFromEnv,
     parseRequiredInt,
     reasoningFromEnv,
     dataCaptureFromEnv,
@@ -22,7 +22,7 @@ const DEFAULT_BASE_URL = "https://api.x.ai/v1";
 // Context windows from docs.x.ai/developers/models (July 2026). xAI does not
 // expose context_window via any documented API endpoint — /v1/language-models
 // returns rich pricing data but no window, /v1/models is OpenAI-sparse.
-// Operators can override via PLURNK_PROVIDERS_CONTEXT_SIZE for new aliases not
+// Operators can override via PLURNK_PROVIDERS_CONTEXT_WINDOW for new aliases not
 // yet in the table. Longest prefix match wins.
 const CONTEXT_BY_PREFIX: ReadonlyArray<[string, number]> = Object.freeze([
     ["grok-4.20-multi-agent", 2_000_000],
@@ -67,13 +67,13 @@ export default class Xai {
 
         // Context: env override > per-family table > throw. Resolved before the
         // pricing probe so an unknown alias fails fast without a network call.
-        const envCtx = parseOptionalInt(env.PLURNK_PROVIDERS_CONTEXT_SIZE, "PLURNK_PROVIDERS_CONTEXT_SIZE", "xai");
-        const contextSize = envCtx !== null ? envCtx : lookupContextByPrefix(model);
-        if (contextSize === null || !Number.isFinite(contextSize) || contextSize <= 0) {
+        const envCtx = contextWindowFromEnv(env, "xai");
+        const contextWindow = envCtx !== null ? envCtx : lookupContextByPrefix(model);
+        if (contextWindow === null || !Number.isFinite(contextWindow) || contextWindow <= 0) {
             throw new Error(
                 `xai provider: no context-window known for "${model}". xAI's API does not expose this; ` +
                 "either pick an alias matching a known family prefix (grok-4.3, grok-4.20*, etc.) " +
-                "or set PLURNK_PROVIDERS_CONTEXT_SIZE explicitly.",
+                "or set PLURNK_PROVIDERS_CONTEXT_WINDOW explicitly.",
             );
         }
 
@@ -84,7 +84,7 @@ export default class Xai {
             url: `${base}/chat/completions`,
             fetchTimeoutMs,
             headers: { Authorization: `Bearer ${apiKey}` },
-            contextSize,
+            contextWindow,
             reasoning,
             temperature: parseRequiredFloat(env.PLURNK_PROVIDERS_TEMPERATURE, "PLURNK_PROVIDERS_TEMPERATURE", "xai", 0),
             repeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_REPEAT_PENALTY, "PLURNK_PROVIDERS_REPEAT_PENALTY", "xai", 0),
