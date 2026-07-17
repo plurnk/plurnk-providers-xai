@@ -15,6 +15,7 @@ import {
     providerSource,
     requireEnv,
     type Provider,
+    envelopeFromEnv,
 } from "@plurnk/plurnk-providers";
 
 const DEFAULT_BASE_URL = "https://api.x.ai/v1";
@@ -89,6 +90,8 @@ export default class Xai {
             temperature: parseRequiredFloat(env.PLURNK_PROVIDERS_TEMPERATURE, "PLURNK_PROVIDERS_TEMPERATURE", "xai", 0),
             repeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_REPEAT_PENALTY, "PLURNK_PROVIDERS_REPEAT_PENALTY", "xai", 0),
             frequencyPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_FREQUENCY_PENALTY, "PLURNK_PROVIDERS_FREQUENCY_PENALTY", "xai", 0),
+            // #507: envelope reserves (window-fraction floor, absolute overrides).
+            ...envelopeFromEnv(env, "xai"),
             retryDelayMs: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_DELAY, "PLURNK_PROVIDERS_RETRY_DELAY", "xai"),
             retryAttempts: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_ATTEMPTS, "PLURNK_PROVIDERS_RETRY_ATTEMPTS", "xai"),
             // Opt-in data capture (#36), off by default, per-alias-scopable.
