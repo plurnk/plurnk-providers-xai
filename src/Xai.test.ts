@@ -118,6 +118,25 @@ test("#35: a reasoning grok (grok-4.3) STILL sends reasoning_effort — the fix 
     assert.equal(body.reasoning_effort, "high");
 });
 
+test("providers-xai#2: no forced frequency_penalty on the wire, even with the floor knob set", async () => {
+    const body = await wireBodyFor("grok-code-fast-1", {}); // baseEnv still carries FREQUENCY_PENALTY=0.4
+    assert.equal("frequency_penalty" in body, false);   // the floor is dropped - grok-code-fast-1 rejects the param
+    assert.equal(body.temperature, 0.2);                // other floors still apply
+});
+
+test("providers-xai#2: a caller-supplied frequency_penalty still rides via sampling (not reserved)", async () => {
+    let body: Record<string, unknown> = {};
+    mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
+        if (String(url).includes("/language-models")) return new Response(JSON.stringify({ ...pricingEntry, id: "grok-4.3" }), { status: 200 });
+        if (init?.body !== undefined) body = JSON.parse(String(init.body));
+        return new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode("data: [DONE]")); c.close(); } }), { status: 200 });
+    });
+    const p = await Xai.fromEnv({ ...baseEnv }, "grok-4.3");
+    await p.generate({ workerId: "r", messages: [], sampling: { frequency_penalty: 0.5 } });
+    mock.restoreAll();
+    assert.equal(body.frequency_penalty, 0.5); // floor off, but a model that wants it opts in via sampling
+});
+
 test("#36: data-capture knobs flow through the xai daughter (grok scraping alias)", async () => {
     const on = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_REASONING: "off", PLURNK_PROVIDERS_TOP_LOGPROBS: "3" });
     assert.equal(on.logprobs, true);

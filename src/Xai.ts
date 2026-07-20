@@ -89,7 +89,11 @@ export default class Xai {
             reasoning,
             temperature: parseRequiredFloat(env.PLURNK_PROVIDERS_TEMPERATURE, "PLURNK_PROVIDERS_TEMPERATURE", "xai", 0),
             repeatPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_REPEAT_PENALTY, "PLURNK_PROVIDERS_REPEAT_PENALTY", "xai", 0),
-            frequencyPenalty: parseRequiredFloat(env.PLURNK_PROVIDERS_FREQUENCY_PENALTY, "PLURNK_PROVIDERS_FREQUENCY_PENALTY", "xai", 0),
+            // No forced frequency_penalty floor on xai (providers-xai#2). The floor's
+            // rationale is repetition/loop prevention under a constraining grammar, and
+            // xai runs NO grammar (no rails) on modern models; grok-code-fast-1 rejects
+            // the parameter outright. A caller wanting a penalty still passes it via
+            // `sampling` (frequency_penalty isn't reserved). Omitting -> OpenAICompat's 0-default.
             // #507: envelope reserves (window-fraction floor, absolute overrides).
             ...envelopeFromEnv(env, "xai"),
             retryDelayMs: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_DELAY, "PLURNK_PROVIDERS_RETRY_DELAY", "xai"),
