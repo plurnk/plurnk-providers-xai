@@ -12,7 +12,8 @@
     },
     "plurnk": {
         "kind": "provider",
-        "name": "xai"
+        "name": "xai",
+        "builtAgainst": "1.2.0"
     },
     "exports": {
         ".": {
@@ -37,6 +38,6 @@
         "typescript": "^7.0.2"
     },
     "peerDependencies": {
-        "@plurnk/plurnk-providers": "1.2.0"
+        "@plurnk/plurnk-providers": "~1.2.0"
     }
 }
