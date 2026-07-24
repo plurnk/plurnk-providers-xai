@@ -57,10 +57,12 @@ xAI does **not** expose context window via any documented API endpoint. The sibl
 | `grok-4.20-multi-agent` | 2,000,000 |
 | `grok-4.1-fast` | 2,000,000 |
 | `grok-4.20` | 1,000,000 |
+| `grok-4.5`, `grok-4.5-latest`, `grok-build-latest` | 500,000 |
 | `grok-4.3` | 1,000,000 |
+| `grok-build` | 256,000 |
 | `grok-code-fast` | 256,000 |
 
-For aliases not matching any prefix, set `PLURNK_PROVIDERS_CONTEXT_SIZE` explicitly. The table updates with xAI's docs page; PRs welcome.
+For aliases not matching any prefix, set `PLURNK_PROVIDERS_CONTEXT_WINDOW` explicitly. The table updates with xAI's docs page; PRs welcome.
 
 ## reasoning
 
@@ -73,7 +75,11 @@ xAI's reasoning is a tiered `reasoning_effort` body param (`low | medium | high`
 | `1001`–`4000` | `medium` |
 | `4001`+ | `high` |
 
-Some Grok models reject the param entirely (the non-reasoning variants); requests against those will 400 if `PLURNK_PROVIDERS_REASONING_BUDGET > 0`. Pick a reasoning-capable alias (`grok-4.3`, `grok-4.20-0309-reasoning`) when reasoning is required.
+Grok Build 0.1 is a reasoning model, but its Chat Completions endpoint does not
+expose the `reasoning_effort` control and returns 400 when that field is sent.
+The provider therefore omits it for `grok-build-0.1` and its `grok-code-fast*`
+aliases. This does not disable the model's internal reasoning. Grok 4.5
+(including `grok-build-latest`) and Grok 4.3 accept the tiered control.
 
 ## tokenization
 

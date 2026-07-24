@@ -88,8 +88,19 @@ test("fromEnv: Grok Build (grok-build-0.1) resolves to 256k", async () => {
     assert.equal(p.contextWindow, 256_000);
 });
 
-// #35: grok-build / grok-code-fast have NO reasoning channel — the provider must
-// never emit reasoning_effort for them (xAI 400s), even under a REASONING intent.
+test("#586: Grok 4.5 and its aliases resolve to 500k without a context override", async () => {
+    for (const model of ["grok-4.5", "grok-4.5-latest", "grok-build-latest"]) {
+        mockPricing({ ...pricingEntry, id: model });
+        const p = await Xai.fromEnv({ ...baseEnv }, model);
+        assert.equal(p.model, model);
+        assert.equal(p.contextWindow, 500_000);
+        mock.restoreAll();
+    }
+});
+
+// Grok Build 0.1 reasons, but Chat Completions exposes no reasoning_effort
+// control — the provider must never emit the field (xAI 400s), even under a
+// REASONING intent.
 const wireBodyFor = async (model: string, reasoningEnv: Record<string, string>) => {
     let body: Record<string, unknown> = {};
     mock.method(globalThis, "fetch", async (url: string, init?: RequestInit) => {
@@ -103,19 +114,26 @@ const wireBodyFor = async (model: string, reasoningEnv: Record<string, string>) 
     return body;
 };
 
-test("#35: grok-build emits NO reasoning_effort even with REASONING=on (coding model, no reasoning channel)", async () => {
+test("#35: grok-build omits unsupported reasoning_effort even with REASONING=on", async () => {
     const body = await wireBodyFor("grok-build-0.1", { PLURNK_PROVIDERS_REASONING: "on", PLURNK_PROVIDERS_REASONING_BUDGET: "4096" });
     assert.equal("reasoning_effort" in body, false);
 });
 
-test("#35: grok-code-fast likewise sends no reasoning param", async () => {
+test("#35: grok-code-fast alias likewise omits reasoning_effort", async () => {
     const body = await wireBodyFor("grok-code-fast-1", { PLURNK_PROVIDERS_REASONING: "adaptive" });
     assert.equal("reasoning_effort" in body, false);
 });
 
-test("#35: a reasoning grok (grok-4.3) STILL sends reasoning_effort — the fix is model-scoped", async () => {
+test("#35: grok-4.3 still sends its supported reasoning_effort control", async () => {
     const body = await wireBodyFor("grok-4.3", { PLURNK_PROVIDERS_REASONING: "on", PLURNK_PROVIDERS_REASONING_BUDGET: "4096" });
     assert.equal(body.reasoning_effort, "high");
+});
+
+test("#586: Grok 4.5 and grok-build-latest send supported reasoning_effort", async () => {
+    for (const model of ["grok-4.5", "grok-4.5-latest", "grok-build-latest"]) {
+        const body = await wireBodyFor(model, { PLURNK_PROVIDERS_REASONING: "on", PLURNK_PROVIDERS_REASONING_BUDGET: "2000" });
+        assert.equal(body.reasoning_effort, "medium");
+    }
 });
 
 test("providers-xai#2: no forced frequency_penalty on the wire, even with the floor knob set", async () => {
@@ -267,4 +285,3 @@ test("#39: an entry without the long tier bills at base regardless of prompt siz
     // 500000 × 12500 × 100 (base) — never a phantom long tier
     assert.equal(huge, 500_000 * 12_500 * 100);
 });
-

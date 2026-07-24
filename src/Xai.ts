@@ -25,36 +25,38 @@ const DEFAULT_BASE_URL = "https://api.x.ai/v1";
 // returns rich pricing data but no window, /v1/models is OpenAI-sparse.
 // Operators can override via PLURNK_PROVIDERS_CONTEXT_WINDOW for new aliases not
 // yet in the table. Longest prefix match wins.
-const CONTEXT_BY_PREFIX: ReadonlyArray<[string, number]> = Object.freeze([
-    ["grok-4.20-multi-agent", 2_000_000],
-    ["grok-4.1-fast", 2_000_000],
-    ["grok-4.20", 1_000_000],
-    ["grok-4.3", 1_000_000],
-    // Grok Build (grok-build-0.1, alias grok-code-fast-1) — the coding model, 256k.
-    ["grok-build", 256_000],
-    ["grok-code-fast", 256_000],
+type ModelFamily = Readonly<{
+    prefix: string;
+    contextWindow: number;
+    reasoningEffort: boolean;
+}>;
+
+// One table owns both capabilities so an alias cannot resolve its context from
+// one family and its reasoning-control behavior from another. Longest prefix
+// wins: grok-build-latest is the 4.5 alias, while versioned grok-build-* names
+// identify Grok Build 0.1. Build 0.1 reasons, but its Chat Completions endpoint
+// rejects the reasoning_effort control; `false` means omit that field, not that
+// the model has no internal reasoning.
+const MODEL_FAMILIES: readonly ModelFamily[] = Object.freeze([
+    { prefix: "grok-4.20-multi-agent", contextWindow: 2_000_000, reasoningEffort: true },
+    { prefix: "grok-build-latest", contextWindow: 500_000, reasoningEffort: true },
+    { prefix: "grok-4.1-fast", contextWindow: 2_000_000, reasoningEffort: true },
+    { prefix: "grok-4.20", contextWindow: 1_000_000, reasoningEffort: true },
+    { prefix: "grok-4.5", contextWindow: 500_000, reasoningEffort: true },
+    { prefix: "grok-4.3", contextWindow: 1_000_000, reasoningEffort: true },
+    { prefix: "grok-build", contextWindow: 256_000, reasoningEffort: false },
+    { prefix: "grok-code-fast", contextWindow: 256_000, reasoningEffort: false },
 ]);
 
-const lookupContextByPrefix = (model: string): number | null => {
-    let best: { prefix: string; ctx: number } | null = null;
-    for (const [prefix, ctx] of CONTEXT_BY_PREFIX) {
-        if (model.startsWith(prefix) && (best === null || prefix.length > best.prefix.length)) {
-            best = { prefix, ctx };
+const lookupModelFamily = (model: string): ModelFamily | null => {
+    let best: ModelFamily | null = null;
+    for (const family of MODEL_FAMILIES) {
+        if (model.startsWith(family.prefix) && (best === null || family.prefix.length > best.prefix.length)) {
+            best = family;
         }
     }
-    return best?.ctx ?? null;
+    return best;
 };
-
-// Reasoning capability by family (#35). Grok Build (grok-build-0.1 /
-// grok-code-fast-1) is a coding model with NO reasoning channel — xAI 400s on
-// `reasoning_effort` for it, whatever the value ("Model … does not support
-// parameter reasoningEffort"). Every other Grok reasons. Model-capability, the
-// same shape as the context table: send the reasoning param ONLY where the model
-// accepts it. A non-reasoning model gets reasoningStyle "none" — no wire param at
-// all — so a globally-set REASONING intent can't break the coding alias. This is
-// the accurate mapping (the channel doesn't exist), not a silent degradation.
-const NON_REASONING_PREFIXES: readonly string[] = ["grok-build", "grok-code-fast"];
-const modelReasons = (model: string): boolean => !NON_REASONING_PREFIXES.some((p) => model.startsWith(p));
 
 export default class Xai {
     static async fromEnv(env: NodeJS.ProcessEnv, model: string): Promise<Provider> {
@@ -68,12 +70,13 @@ export default class Xai {
 
         // Context: env override > per-family table > throw. Resolved before the
         // pricing probe so an unknown alias fails fast without a network call.
+        const family = lookupModelFamily(model);
         const envCtx = contextWindowFromEnv(env, "xai");
-        const contextWindow = envCtx !== null ? envCtx : lookupContextByPrefix(model);
+        const contextWindow = envCtx !== null ? envCtx : family?.contextWindow ?? null;
         if (contextWindow === null || !Number.isFinite(contextWindow) || contextWindow <= 0) {
             throw new Error(
                 `xai provider: no context-window known for "${model}". xAI's API does not expose this; ` +
-                "either pick an alias matching a known family prefix (grok-4.3, grok-4.20*, etc.) " +
+                "either pick an alias matching a known family prefix (grok-4.5, grok-4.3, etc.) " +
                 "or set PLURNK_PROVIDERS_CONTEXT_WINDOW explicitly.",
             );
         }
@@ -100,7 +103,7 @@ export default class Xai {
             retryAttempts: parseRequiredInt(env.PLURNK_PROVIDERS_RETRY_ATTEMPTS, "PLURNK_PROVIDERS_RETRY_ATTEMPTS", "xai"),
             // Opt-in data capture (#36), off by default, per-alias-scopable.
             ...dataCaptureFromEnv(env, "xai"),
-            reasoningStyle: modelReasons(model) ? "effort" : "none",
+            reasoningStyle: family?.reasoningEffort === false ? "none" : "effort",
             // Per xAI's docs Grok uses cl100k_base. All current Grok variants
             // share the same tokenizer — no per-model dispatch needed.
             // Three-rate cost: cached tokens are a SUBSET of prompt_tokens,
