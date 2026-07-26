@@ -62,6 +62,7 @@ export default class Xai {
     static async fromEnv(env: NodeJS.ProcessEnv, model: string): Promise<Provider> {
         const apiKey = requireEnv(env.XAI_API_KEY, "XAI_API_KEY", "xai");
         const fetchTimeoutMs = parseRequiredInt(env.PLURNK_PROVIDERS_FETCH_TIMEOUT, "PLURNK_PROVIDERS_FETCH_TIMEOUT", "xai");
+        const streamIdleTimeoutMs = parseRequiredInt(env.PLURNK_PROVIDERS_STREAM_IDLE_TIMEOUT, "PLURNK_PROVIDERS_STREAM_IDLE_TIMEOUT", "xai");
         const reasoning = reasoningFromEnv(env, "xai");
         const rawBase = env.XAI_BASE_URL !== undefined && env.XAI_BASE_URL.length > 0
             ? env.XAI_BASE_URL
@@ -87,6 +88,7 @@ export default class Xai {
             model,
             url: `${base}/chat/completions`,
             fetchTimeoutMs,
+            streamIdleTimeoutMs,
             headers: { Authorization: `Bearer ${apiKey}` },
             contextWindow,
             reasoning,
